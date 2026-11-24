@@ -2,15 +2,32 @@ name: ci
 
 on:
   push:
-    branches: [ main ]
+    branches: [ master ]
 
   pull_request:
-    branches: [ main ]
+    branches: [ master ]
 
 jobs:
   test_and_build:
     if: github.event_name == 'push' || github.event_name == 'pull_request'
     runs-on: ubuntu-latest
+
+    services:
+      mysql:
+        image: mysql:8
+        env:
+          MYSQL_ROOT_PASSWORD: test_root_password
+          MYSQL_DATABASE: online_business_school_flyway
+          MYSQL_USER: school_user
+          MYSQL_PASSWORD: test_password
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 --silent"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=20
+          
 
     steps:
       - name: Checkout code
@@ -23,6 +40,10 @@ jobs:
           distribution: "temurin"
           cache: "maven"
 
-      - name: Run tests
-        run: mvn test
+      - name: Run tests and build
+        env:
+          SPRING_DATASOURCE_URL: jdbc:mysql://localhost:3306/online_business_school_flyway
+          DOCKER_DB_USER: school_user
+          DOCKER_DB_PASSWORD: test_password
+        run: mvn --batch-mode verify
 
